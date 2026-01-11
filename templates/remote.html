@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vizio TV Remote</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #f0f0fa;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .remote-container {
+            width: 100%;
+            max-width: 400px;
+            background: #14141e;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #64a0ff;
+            font-size: 28px;
+        }
+        
+        .button {
+            background: #323246;
+            border: 2px solid #505064;
+            border-radius: 8px;
+            color: #f0f0fa;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        
+        .button:hover {
+            background: #464664;
+            border-color: #64a0ff;
+        }
+        
+        .button:active {
+            background: #5a5a82;
+            transform: scale(0.95);
+        }
+        
+        .power-button {
+            background: #c85050;
+            border-color: #a04040;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            margin: 0 auto 20px;
+        }
+        
+        .power-button:hover {
+            background: #d06060;
+            border-color: #ff6464;
+        }
+        
+        .accent-button {
+            background: #6490c8;
+            border-color: #5080b0;
+        }
+        
+        .accent-button:hover {
+            background: #74a0d8;
+            border-color: #64a0ff;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .button-row .button {
+            flex: 1;
+            height: 50px;
+        }
+        
+        .dpad-container {
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px 60px;
+            gap: 5px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .dpad-button {
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+        }
+        
+        .dpad-up { grid-column: 2; grid-row: 1; }
+        .dpad-left { grid-column: 1; grid-row: 2; }
+        .dpad-ok { grid-column: 2; grid-row: 2; }
+        .dpad-right { grid-column: 3; grid-row: 2; }
+        .dpad-down { grid-column: 2; grid-row: 3; }
+        
+        .section-label {
+            text-align: center;
+            color: #a0a0b0;
+            font-size: 12px;
+            margin: 15px 0 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-message {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-success {
+            background: rgba(80, 200, 120, 0.2);
+            color: #50c878;
+        }
+        
+        .status-error {
+            background: rgba(200, 80, 80, 0.2);
+            color: #c85050;
+        }
+        
+        .status-info {
+            background: rgba(100, 160, 255, 0.2);
+            color: #64a0ff;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #282838;
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            border: 2px solid #505064;
+        }
+
+        .modal-title {
+            color: #64a0ff;
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal-item {
+            background: #323246;
+            border: 1px solid #505064;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .modal-item:hover {
+            background: #464664;
+            border-color: #64a0ff;
+        }
+
+        .close-modal {
+            background: #c85050;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="remote-container">
+        <h1>Vizio Remote</h1>
+        
+        <!-- Power Button -->
+        <button class="button power-button" onclick="sendCommand('toggle')">⏻</button>
+        
+        <!-- Top Row: Inputs, Apps, Home -->
+        <div class="button-row">
+            <button class="button" onclick="showInputs()">INPUTS</button>
+            <button class="button" onclick="showApps()">APPS</button>
+            <button class="button" onclick="sendCommand('home')">HOME</button>
+        </div>
+        
+        <!-- D-Pad Navigation -->
+        <div class="dpad-container">
+            <button class="button dpad-button dpad-up" onclick="sendCommand('up')">▲</button>
+            <button class="button dpad-button dpad-left" onclick="sendCommand('left')">◄</button>
+            <button class="button dpad-button dpad-ok accent-button" onclick="sendCommand('ok')">OK</button>
+            <button class="button dpad-button dpad-right" onclick="sendCommand('right')">►</button>
+            <button class="button dpad-button dpad-down" onclick="sendCommand('down')">▼</button>
+        </div>
+        
+        <!-- Back/Menu/Exit/Info Row -->
+        <div class="button-row">
+            <button class="button" onclick="sendCommand('back')">BACK</button>
+            <button class="button" onclick="sendCommand('menu')">MENU</button>
+        </div>
+        <div class="button-row">
+            <button class="button" onclick="sendCommand('exit')">EXIT</button>
+            <button class="button" onclick="sendCommand('info')">INFO</button>
+        </div>
+        
+        <!-- Volume Controls -->
+        <div class="section-label">Volume</div>
+        <div class="button-row">
+            <button class="button" onclick="sendCommand('vol_down')">VOL -</button>
+            <button class="button" onclick="sendCommand('vol_up')">VOL +</button>
+            <button class="button" onclick="sendCommand('mute')">MUTE</button>
+        </div>
+        
+        <!-- Channel Controls -->
+        <div class="section-label">Channel</div>
+        <div class="button-row">
+            <button class="button" onclick="sendCommand('ch_down')">CH -</button>
+            <button class="button" onclick="sendCommand('ch_up')">CH +</button>
+        </div>
+        
+        <!-- Status Message -->
+        <div id="statusMessage" class="status-message status-info">Ready</div>
+    </div>
+
+    <!-- Modal for Inputs/Apps -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="modal-title"></h2>
+            <div id="modalItems"></div>
+            <button class="button close-modal" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status-message status-' + type;
+        }
+
+        async function sendCommand(command) {
+            try {
+                const response = await fetch(`/api/command/${command}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('✓ ' + data.message, 'success');
+                } else {
+                    showStatus('✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function showInputs() {
+            try {
+                const response = await fetch('/api/inputs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showModal('Select Input', data.inputs.map(inp => ({
+                        name: inp.name,
+                        display: inp.value || inp.name,
+                        action: () => setInput(inp.name)
+                    })));
+                } else {
+                    showStatus('✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function showApps() {
+            try {
+                const response = await fetch('/api/apps');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showModal('Select App', data.apps.map(app => ({
+                        name: app,
+                        display: app,
+                        action: () => launchApp(app)
+                    })));
+                } else {
+                    showStatus('✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function setInput(inputName) {
+            closeModal();
+            try {
+                const response = await fetch(`/api/input/${encodeURIComponent(inputName)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('✓ ' + data.message, 'success');
+                } else {
+                    showStatus('✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function launchApp(appName) {
+            closeModal();
+            try {
+                const response = await fetch(`/api/app/${encodeURIComponent(appName)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('✓ ' + data.message, 'success');
+                } else {
+                    showStatus('✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showModal(title, items) {
+            document.getElementById('modalTitle').textContent = title;
+            const itemsContainer = document.getElementById('modalItems');
+            itemsContainer.innerHTML = '';
+            
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'modal-item';
+                div.textContent = item.display;
+                div.onclick = item.action;
+                itemsContainer.appendChild(div);
+            });
+            
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

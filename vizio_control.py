@@ -14,14 +14,13 @@ import requests
 import json
 import sys
 
-
-
 CONFIG_FILE = "vizio_config.json"
 
 class VizioTV:
-    def __init__(self, ip_address, auth_token=None):
+    def __init__(self, ip_address, auth_token=None, ip_mac=None):
         self.ip = ip_address
         self.port = 7345
+        self.mac = ip_mac
         self.base_url = f"https://{self.ip}:{self.port}"
         self.auth_token = auth_token
         self.headers = {
@@ -109,7 +108,8 @@ class VizioTV:
             if "INVALID" in response.text:
                 print("The PIN may be incorrect or expired. Try pairing again.")
             return None
-    
+
+
     def get_power_state(self):
         """Check if TV is on or off"""
         response = self._make_request("GET", "/state/device/power_mode")
@@ -129,7 +129,43 @@ class VizioTV:
             print(f"Response: {response.text}")
             return None
     
+    import time
+
     def power_on(self):
+        """Turn TV on"""
+        # First try Wake-on-LAN if MAC address is available
+        if self.mac:
+            print(f"Sending WoL magic packet to {self.mac}...")
+            try:
+                send_wol(self.mac)
+                print("Waiting 5 seconds for TV to wake up...")
+                time.sleep(5)
+            except Exception as e:
+                print(f"WoL failed: {e}, trying API command...")
+        
+        # Now try the API command
+        data = {
+            "KEYLIST": [{
+                "CODESET": 11,
+                "CODE": 1,
+                "ACTION": "KEYPRESS"
+            }]
+        }
+        response = self._make_request("PUT", "/key_command/", data)
+        if response is None:
+            return False
+        
+        if response.status_code == 200:
+            return True
+        elif response.status_code == 401:
+            print("ERROR: Authentication failed. Your auth token is invalid.")
+            return False
+        else:
+            print(f"ERROR: Power on failed with status {response.status_code}")
+            print(f"Response: {response.text}")
+            return False
+
+    def power_on_old(self):
         """Turn TV on"""
         data = {
             "KEYLIST": [{
@@ -433,11 +469,11 @@ class VizioTV:
             "youtube": {"name_space": 5, "app_id": "1", "message": None},
             "acorn tv": {"name_space": 4, "app_id": "74", "message": "https://app.rlje.net/vizio/index.html"},
             "watchfree": {"name_space": 4, "app_id": "3014", "message": "http://127.0.0.1:12345/scfs/sctv/main.html#/watchfreeplus"},
-            "hulu": {"name_space": 4, "app_id": "3", "message": "viziosmartcast.app.hulu.com"},
-            "prime video": {"name_space": 4, "app_id": "4", "message": "https://app.primevideo.com"},
-            "disney+": {"name_space": 4, "app_id": "11", "message": "static-s.api.disneyplus.com"},
-            "plex": {"name_space": 4, "app_id": "9", "message": "plex.tv"},
-            "vudu": {"name_space": 4, "app_id": "21", "message": "my.vudu.com"},
+            "tubi": {"name_space": 4, "app_id": "61", "message": "https://ott-vizio.tubitv.com/?utm_source=AppRow&tracking=AppRow"},
+            "free movies": {"name_space": 4, "app_id": "331", "message": "https://fmplus.unreel.me/tv/vizio"},
+            "xumo": {"name_space": 4, "app_id": "62", "message": "https://xfinity-kabletown-app.xumo.com/prod/index.html?partner=smartcast"},
+            "action": {"name_space": 4, "app_id": "298", "message": "https://vizio-prod.ottstudio.plus/vizio-apps/action"},
+            "the archive": {"name_space": 4, "app_id": "577", "message": "https://blueprint.matchpoint.tv/thearchive/"},
         }
 
         self.get_current_app_settings()
@@ -491,14 +527,57 @@ class VizioTV:
             "YouTube",
             "Acorn TV",
             "WatchFree",
-            "Hulu", 
-            "Prime Video / Amazon",
-            "Pluto TV",
+            "Tubi", 
+            "Free Movies",
             "XUMO",
-            "Vudu",
+            "Action",
+            "The Archive",
         ]
         return apps
 
+###  end of class VizioTV  ###
+    
+import os
+import re
+
+def get_mac_from_ip(ip_address):
+    # Use system ARP command
+    output = os.popen(f'arp -a {ip_address}').read()
+    
+    # Extract MAC address (matches patterns like AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF)
+    mac_pattern = r'([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})'
+    match = re.search(mac_pattern, output)
+    
+    if match:
+        return match.group(0)
+    return None
+
+# Usage
+#tv_ip = "192.168.1.100"
+#tv_mac = get_mac_from_ip(tv_ip)
+#print(f"MAC address: {tv_mac}")
+
+import socket
+import struct
+
+def send_wol(mac_address, broadcast_ip='255.255.255.255'):
+    # Remove separators from MAC address
+    mac = mac_address.replace(':', '').replace('-', '')
+    
+    # Create magic packet: 6 bytes of FF + 16 repetitions of MAC
+    data = b'FF' * 6 + (mac * 16).encode()
+    packet = b''
+    for i in range(0, len(data), 2):
+        packet += struct.pack('B', int(data[i:i+2], 16))
+    
+    # Send to broadcast address on port 9
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.sendto(packet, (broadcast_ip, 9))
+    sock.close()
+
+# Usage
+#send_wol('AA:BB:CC:DD:EE:FF')  # Your TV's MAC address
 
 def load_config():
     """Load config from file"""
@@ -513,14 +592,15 @@ def load_config():
             print(f"WARNING: Could not load config file: {e}")
     return {}
 
-def save_config(ip, auth_token):
+def save_config(ip, auth_token, tv_mac):
     """Save config to file"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, CONFIG_FILE)
     
     config = {
         "ip": ip,
-        "auth_token": auth_token
+        "auth_token": auth_token,
+        "mac": tv_mac
     }
     
     try:
@@ -531,7 +611,6 @@ def save_config(ip, auth_token):
     except Exception as e:
         print(f"ERROR: Could not save config: {e}")
         return False
-
 
 def show_help():
     """Show help message"""
@@ -573,7 +652,6 @@ def show_help():
     print("  python vizio_control.py input 'DISH Hopper'")
     print("  python vizio_control.py home")
 
-
 def do_pairing(tv_ip):
     """Handle pairing process"""
     tv = VizioTV(tv_ip)
@@ -593,7 +671,11 @@ def do_pairing(tv_ip):
     
     if auth_token:
         print(f"\nAuth Token: {auth_token}")
-        save_config(tv_ip, auth_token)
+
+        tv_mac = get_mac_from_ip(tv_ip)
+        print(f"\nMAC Address: {tv_mac}")
+
+        save_config(tv_ip, auth_token, tv_mac)
         
         # Test the token
         print("\nTesting connection...")
@@ -656,12 +738,7 @@ def main():
     
     auth_token = config['auth_token']
     
-    # Handle explicit pair command
-    #if command == "pair":
-        #success = do_pairing(tv_ip)
-        #sys.exit(0 if success else 1)
-    
-    tv = VizioTV(tv_ip, auth_token)
+    tv = VizioTV(tv_ip, auth_token, config['mac'])
     
     # Execute command
     if command == "on":
@@ -806,13 +883,13 @@ def main():
         sys.exit(0 if success else 1)
     
     elif command == "ch":
-        if len(sys.argv) < 4:
+        if len(sys.argv) < 3:
             print("ERROR: Channel number required")
-            print("Usage: python vizio_control.py <tv_ip> ch <channel_number>")
-            print("Example: python vizio_control.py 192.168.4.31 ch 125")
+            print("Usage: python vizio_control.py ch <channel_number>")
+            print("Example: python vizio_control.py ch 125")
             sys.exit(1)
         
-        channel = sys.argv[3]
+        channel = sys.argv[2]
         success = tv.send_channel(channel)
         if success:
             print(f"✓ Changed to channel {channel}")
