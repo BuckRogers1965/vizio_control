@@ -139,7 +139,7 @@ class VizioTV:
             try:
                 send_wol(self.mac)
                 print("Waiting 5 seconds for TV to wake up...")
-                time.sleep(5)
+                #time.sleep(5)
             except Exception as e:
                 print(f"WoL failed: {e}, trying API command...")
         
@@ -216,6 +216,7 @@ class VizioTV:
         is_on = self.get_power_state()
         if is_on is None:
             print("ERROR: Could not determine power state")
+            send_wol(self.mac)
             return False
         
         if is_on:
