@@ -62,6 +62,8 @@ def execute_command(command):
             success = tv.key_home()
         elif command == "info":
             success = tv.key_info()
+        elif command == "cc":
+            success = tv.cc()
         else:
             return jsonify({"success": False, "message": f"Unknown command: {command}"})
             

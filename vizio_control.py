@@ -5,6 +5,7 @@ Requires: requests library (pip install requests)
 """
 import warnings
 import os
+import time
 
 # 1. Quiet environment warnings immediately
 warnings.filterwarnings("ignore", category=UserWarning, message=".*pkg_resources.*")
@@ -129,7 +130,6 @@ class VizioTV:
             print(f"Response: {response.text}")
             return None
     
-    import time
 
     def power_on(self):
         """Turn TV on"""
@@ -139,7 +139,7 @@ class VizioTV:
             try:
                 send_wol(self.mac)
                 print("Waiting 5 seconds for TV to wake up...")
-                #time.sleep(5)
+                time.sleep(5)
             except Exception as e:
                 print(f"WoL failed: {e}, trying API command...")
         
@@ -217,6 +217,8 @@ class VizioTV:
         if is_on is None:
             print("ERROR: Could not determine power state")
             send_wol(self.mac)
+            print("Waiting 5 seconds for TV to wake up...")
+            time.sleep(5)
             return False
         
         if is_on:
@@ -415,6 +417,10 @@ class VizioTV:
     def key_info(self):
         """Press Info"""
         return self.send_key(4, 6)
+
+    def cc(self):
+        """Toggle Closed Captions"""
+        return self.send_key(13, 0)
     
     # Channel keys
     def channel_up(self):
@@ -869,6 +875,12 @@ def main():
         success = tv.key_info()
         if success:
             print("✓ Info")
+        sys.exit(0 if success else 1)
+
+    elif command == "cc":
+        success = tv.cc()
+        if success:
+            print("✓ CC")
         sys.exit(0 if success else 1)
     
     elif command == "ch_up":

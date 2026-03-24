@@ -86,7 +86,8 @@ class RemoteGUI:
             print("ERROR: No pairing found. Run vizio_control.py first to pair.")
             sys.exit(1)
             
-        self.tv = VizioTV(tv_ip, config['auth_token'])
+        #self.tv = VizioTV(tv_ip, config['auth_token'])
+        self.tv = VizioTV(tv_ip, config['auth_token'], config.get('mac'))
         self.power_state = None
         self.status_message = "Ready"
         self.buttons = []
@@ -137,8 +138,11 @@ class RemoteGUI:
         # OK (center)
         ok_btn = Button(dpad_center_x - small_btn//2, dpad_center_y - small_btn//2+30, 
                        small_btn, small_btn, "OK", lambda: self.execute_command("ok"), ACCENT_COLOR)
+
+        cc_btn = Button(dpad_center_x + small_btn + 20, dpad_center_y - small_btn, 
+                       50, 40, "CC", lambda: self.execute_command("cc"))
         
-        self.buttons.extend([up_btn, down_btn, left_btn, right_btn, ok_btn])
+        self.buttons.extend([up_btn, down_btn, left_btn, right_btn, ok_btn, cc_btn])
         
         y_pos = dpad_center_y + small_btn + 80
         
@@ -222,6 +226,8 @@ class RemoteGUI:
                 success = self.tv.key_home()
             elif command == "info":
                 success = self.tv.key_info()
+            elif command == "cc":
+                success = self.tv.cc()
             else:
                 success = False
                 
